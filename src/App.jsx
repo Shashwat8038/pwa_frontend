@@ -6,28 +6,23 @@ import 'react-toastify/dist/ReactToastify.css';
 function App() {
     const [fcmToken, setFcmToken] = useState(null);
     const [loading, setLoading] = useState(true);
-    const listenerRef = useRef(false); 
+    const listenerRef = useRef(false);
 
     useEffect(() => {
-        // Register the service worker
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('/firebase-messaging-sw.js')
-            .then((registration) => {
-              console.log('Service Worker registered with scope:', registration.scope);
-              // Request permission for notifications and get FCM token
-              requestPermissionAndGetToken();
-            })
-            .catch((error) => {
-              console.error('Service Worker registration failed:', error);
-            });
-        }
-      }, []);
-    
+        const registerServiceWorker = async () => {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                    console.log('Service Worker registered with scope:', registration.scope);
+                    return true; // Indicate that registration was successful
+                } catch (error) {
+                    console.error('Service Worker registration failed:', error);
+                    return false; // Indicate registration failed
+                }
+            }
+            return false; // No service worker support
+        };
 
-   
-
-
-    useEffect(() => {
         const requestPermissionAndGetToken = async () => {
             try {
                 const permission = await Notification.requestPermission();
@@ -37,7 +32,7 @@ function App() {
                     throw new Error('Permission not granted for Notifications');
                 }
 
-                const token = await getToken(messaging, { 
+                const token = await getToken(messaging, {
                     vapidKey: 'BFYyEqlJZ7yE-ZxST7ORCTaLYwfDUWIg3jXWRODFHAxwF2fEUF0Kj9xfHI2iBClbe2LLw0V5H2FJ5C40vT2k5oU' 
                 });
                 console.log('FCM Token:', token);
@@ -50,25 +45,33 @@ function App() {
             }
         };
 
-        requestPermissionAndGetToken();
+        const init = async () => {
+            const serviceWorkerRegistered = await registerServiceWorker();
+            if (serviceWorkerRegistered) {
+                await requestPermissionAndGetToken();
+            } else {
+                setLoading(false);
+                toast.error('Service Worker registration failed. Notifications cannot be received.');
+            }
+        };
+
+        init();
     }, []);
 
     useEffect(() => {
-      
-        if (!listenerRef.current) {
+        if (!listenerRef.current && fcmToken) {
             listenerRef.current = true; 
             const unsubscribe = onMessage(messaging, (payload) => {
                 console.log('Message received: ', payload);
                 const { title, body } = payload.notification;
 
-               
                 toast.dismiss(); 
                 toast.info(`${title}: ${body}`); 
             });
 
             return () => unsubscribe(); 
         }
-    }, []); 
+    }, [fcmToken]); 
 
     const sendNotification = async () => {
         setLoading(true);
