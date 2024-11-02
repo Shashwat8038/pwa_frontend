@@ -1,6 +1,6 @@
 // public/firebase-messaging-sw.js
-importScripts('https://www.gstatic.com/firebasejs/<v9+>/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/<v9+>/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.9.1/firebase-messaging-compat.js');
 
 firebase.initializeApp({
   
@@ -14,21 +14,23 @@ firebase.initializeApp({
       
 });
 
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/firebase-messaging-sw.js')
-      .then((registration) => {
-        console.log('Service Worker registered with scope:', registration.scope);
-      })
-      .catch((error) => {
-        console.error('Service Worker registration failed:', error);
-      });
-  }
+
+const messaging = firebase.messaging();
+
+// if ('serviceWorker' in navigator) {
+//     navigator.serviceWorker.register('/firebase-messaging-sw.js')
+//       .then((registration) => {
+//         console.log('Service Worker registered with scope:', registration.scope);
+//       })
+//       .catch((error) => {
+//         console.error('Service Worker registration failed:', error);
+//       });
+//   }
   
 
 
 
 
-const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
     console.log('Received background message: ', payload);
