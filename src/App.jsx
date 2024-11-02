@@ -6,7 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 function App() {
     const [fcmToken, setFcmToken] = useState(null);
     const [loading, setLoading] = useState(true);
-    const listenerRef = useRef(false);
+    const listenerInitialized = useRef(false);
 
     useEffect(() => {
         const registerServiceWorker = async () => {
@@ -14,26 +14,28 @@ function App() {
                 try {
                     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
                     console.log('Service Worker registered with scope:', registration.scope);
-                    return true; // Indicate that registration was successful
+                    return registration;
                 } catch (error) {
                     console.error('Service Worker registration failed:', error);
-                    return false; // Indicate registration failed
+                    toast.error('Service Worker registration failed. Notifications cannot be received.');
+                    return null;
                 }
+            } else {
+                toast.error('Service Workers are not supported in this browser.');
+                return null;
             }
-            return false; // No service worker support
         };
 
-        const requestPermissionAndGetToken = async () => {
+        const requestPermissionAndGetToken = async (registration) => {
             try {
                 const permission = await Notification.requestPermission();
-                console.log('Notification permission status:', permission);
-
                 if (permission !== 'granted') {
                     throw new Error('Permission not granted for Notifications');
                 }
 
                 const token = await getToken(messaging, {
-                    vapidKey: 'BFYyEqlJZ7yE-ZxST7ORCTaLYwfDUWIg3jXWRODFHAxwF2fEUF0Kj9xfHI2iBClbe2LLw0V5H2FJ5C40vT2k5oU' 
+                    vapidKey: 'BFYyEqlJZ7yE-ZxST7ORCTaLYwfDUWIg3jXWRODFHAxwF2fEUF0Kj9xfHI2iBClbe2LLw0V5H2FJ5C40vT2k5oU',
+                    serviceWorkerRegistration: registration,
                 });
                 console.log('FCM Token:', token);
                 setFcmToken(token);
@@ -45,33 +47,29 @@ function App() {
             }
         };
 
-        const init = async () => {
-            const serviceWorkerRegistered = await registerServiceWorker();
-            if (serviceWorkerRegistered) {
-                await requestPermissionAndGetToken();
+        const initializeNotifications = async () => {
+            const registration = await registerServiceWorker();
+            if (registration) {
+                await requestPermissionAndGetToken(registration);
             } else {
                 setLoading(false);
-                toast.error('Service Worker registration failed. Notifications cannot be received.');
             }
         };
 
-        init();
+        initializeNotifications();
     }, []);
 
     useEffect(() => {
-        if (!listenerRef.current && fcmToken) {
-            listenerRef.current = true; 
+        if (!listenerInitialized.current && fcmToken) {
+            listenerInitialized.current = true;
             const unsubscribe = onMessage(messaging, (payload) => {
                 console.log('Message received: ', payload);
                 const { title, body } = payload.notification;
-
-                toast.dismiss(); 
-                toast.info(`${title}: ${body}`); 
+                toast.info(`${title}: ${body}`);
             });
-
-            return () => unsubscribe(); 
+            return () => unsubscribe();
         }
-    }, [fcmToken]); 
+    }, [fcmToken]);
 
     const sendNotification = async () => {
         setLoading(true);
@@ -92,11 +90,9 @@ function App() {
                 throw new Error('Failed to send notification');
             }
             console.log('Notification sent successfully');
-            toast.dismiss(); 
             toast.success('Notification sent successfully!');
         } catch (error) {
             console.error('Error sending notification:', error);
-            toast.dismiss(); 
             toast.error('Failed to send notification: ' + error.message);
         } finally {
             setLoading(false);
@@ -106,8 +102,9 @@ function App() {
     return (
         <div className="App">
             <h1>React Push Notifications</h1>
-            {loading && <p>Loading...</p>}
-            {fcmToken ? (
+            {loading ? (
+                <p>Loading...</p>
+            ) : fcmToken ? (
                 <div>
                     <p>Your device is ready to receive notifications.</p>
                     <button onClick={sendNotification} disabled={loading}>
@@ -117,7 +114,7 @@ function App() {
             ) : (
                 <p>Please allow notifications in your browser.</p>
             )}
-           
+
             <ToastContainer 
                 position="top-right" 
                 autoClose={5000} 
