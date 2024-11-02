@@ -14,35 +14,28 @@ function App() {
                 try {
                     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
                     console.log('Service Worker registered with scope:', registration.scope);
-                    return true; // Indicate that registration was successful
+                    return true;
                 } catch (error) {
                     console.error('Service Worker registration failed:', error);
-                    return false; // Indicate registration failed
+                    return false;
                 }
             }
-            return false; // No service worker support
+            return false;
         };
 
         const requestPermissionAndGetToken = async () => {
-            try {
+            if (Notification.permission !== 'granted') {
                 const permission = await Notification.requestPermission();
-                console.log('Notification permission status:', permission);
-
                 if (permission !== 'granted') {
                     throw new Error('Permission not granted for Notifications');
                 }
-
-                const token = await getToken(messaging, {
-                    vapidKey: 'BFYyEqlJZ7yE-ZxST7ORCTaLYwfDUWIg3jXWRODFHAxwF2fEUF0Kj9xfHI2iBClbe2LLw0V5H2FJ5C40vT2k5oU' 
-                });
-                console.log('FCM Token:', token);
-                setFcmToken(token);
-            } catch (error) {
-                console.error('Error getting FCM token:', error);
-                toast.error('Failed to get notification permission or token: ' + error.message);
-            } finally {
-                setLoading(false);
             }
+
+            const token = await getToken(messaging, {
+                vapidKey: 'BFYyEqlJZ7yE-ZxST7ORCTaLYwfDUWIg3jXWRODFHAxwF2fEUF0Kj9xfHI2iBClbe2LLw0V5H2FJ5C40vT2k5oU' 
+            });
+            console.log('FCM Token:', token);
+            setFcmToken(token);
         };
 
         const init = async () => {
